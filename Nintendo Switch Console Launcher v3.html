@@ -1,0 +1,1921 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#1E1E1E">
+    <title>NX-OS Horizon v3 | Portable Console Launcher</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --switch-bg: #1E1E1E;
+            --switch-surface: #2D2D2D;
+            --switch-cyan: #00C3E3;
+            --switch-blue: #0088FF;
+            --switch-red: #E60012;
+            --switch-text: #F5F5F5;
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--switch-bg);
+            color: var(--switch-text);
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            height: 100dvh;
+            padding-left: env(safe-area-inset-left);
+            padding-right: env(safe-area-inset-right);
+            padding-top: env(safe-area-inset-top);
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+
+        body.light-theme {
+            --switch-bg: #EBEBEB;
+            --switch-surface: #FFFFFF;
+            --switch-text: #1E1E1E;
+        }
+
+        /* Strict Portrait Guard Overlay */
+        #portraitGuard {
+            display: none;
+        }
+        @media screen and (orientation: portrait) {
+            #portraitGuard {
+                display: flex !important;
+            }
+            #consoleShell {
+                display: none !important;
+            }
+        }
+
+        /* Authentic Nintendo Switch Glowing Selection Pulse */
+        @keyframes switchPulse {
+            0% {
+                box-shadow: 0 0 0 3px var(--switch-cyan), 0 0 18px rgba(0, 195, 227, 0.8);
+                border-color: #7CEEFF;
+            }
+            50% {
+                box-shadow: 0 0 0 5px var(--switch-blue), 0 0 28px rgba(0, 136, 255, 0.95);
+                border-color: #00C3E3;
+            }
+            100% {
+                box-shadow: 0 0 0 3px var(--switch-cyan), 0 0 18px rgba(0, 195, 227, 0.8);
+                border-color: #7CEEFF;
+            }
+        }
+
+        .switch-focused {
+            animation: switchPulse 1.4s infinite ease-in-out;
+            transform: scale(1.05);
+            z-index: 20;
+            border: 3px solid var(--switch-cyan) !important;
+        }
+
+        .bottom-btn-focused {
+            animation: switchPulse 1.4s infinite ease-in-out;
+            transform: scale(1.14);
+            border: 3px solid var(--switch-cyan) !important;
+        }
+
+        .top-btn-focused {
+            animation: switchPulse 1.4s infinite ease-in-out;
+            transform: scale(1.06);
+            border: 2px solid var(--switch-cyan) !important;
+        }
+
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        .game-tile {
+            transition: transform 0.18s cubic-bezier(0.2, 0.9, 0.3, 1.1), box-shadow 0.18s ease;
+        }
+
+        .btn-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 20px;
+            height: 20px;
+            padding: 0 5px;
+            border-radius: 9999px;
+            background-color: var(--switch-text);
+            color: var(--switch-bg);
+            font-weight: 800;
+            font-size: 10px;
+            margin-right: 5px;
+        }
+
+        .cover-gloss {
+            background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 45%, rgba(0,0,0,0.45) 100%);
+        }
+
+        @keyframes phoneRotateHint {
+            0%, 100% { transform: rotate(0deg); }
+            50% { transform: rotate(-90deg); }
+        }
+        .rotate-anim {
+            animation: phoneRotateHint 2s infinite ease-in-out;
+        }
+
+        /* Delayed Focus Tooltip Animation */
+        @keyframes tooltipPopIn {
+            0% { opacity: 0; transform: translate(-50%, 6px) scale(0.92); }
+            100% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+        }
+        .console-tooltip {
+            animation: tooltipPopIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            transition: opacity 0.28s ease, transform 0.28s ease;
+        }
+        .console-tooltip.fading-out {
+            opacity: 0 !important;
+            transform: translate(-50%, -4px) scale(0.95) !important;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ==================== PORTRAIT MODE GUARD OVERLAY ==================== -->
+    <div id="portraitGuard" class="fixed inset-0 z-[100] bg-[#141414] text-white flex-col items-center justify-center p-6 text-center">
+        <div class="w-16 h-16 rounded-2xl bg-cyan-500/15 border-2 border-cyan-400 flex items-center justify-center mb-5 rotate-anim">
+            <svg class="w-8 h-8 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <rect x="6" y="2" width="12" height="20" rx="2" stroke-width="2"></rect>
+                <circle cx="12" cy="18" r="1" fill="currentColor"></circle>
+            </svg>
+        </div>
+        <h2 class="text-xl font-extrabold tracking-tight text-cyan-400">Rotate Device to Landscape</h2>
+        <p class="text-xs text-gray-300 mt-2 max-w-xs leading-relaxed">
+            NX-OS Horizon runs strictly in horizontal handheld mode so your console screen never compresses.
+        </p>
+        <button onclick="enterFullscreenConsole()" class="mt-5 px-5 py-2.5 rounded-xl bg-cyan-500 text-black font-extrabold text-xs uppercase tracking-wider shadow-lg">
+            Enter Fullscreen Landscape
+        </button>
+    </div>
+
+    <!-- ==================== DELAYED FOCUS TOOLTIP FLOATING PILL ==================== -->
+    <div id="floatingTooltip" class="fixed z-40 pointer-events-none hidden px-3.5 py-1.5 rounded-full bg-[#121212]/95 text-white border border-cyan-400/60 shadow-[0_8px_24px_rgba(0,0,0,0.65)] backdrop-blur-md text-center whitespace-nowrap">
+        <div id="tooltipTitle" class="text-[11px] font-extrabold text-cyan-300 leading-tight">eShop / Add ROM</div>
+        <div id="tooltipSub" class="text-[9px] text-gray-300 font-medium leading-tight">Import local games & box art</div>
+    </div>
+
+    <!-- ==================== MAIN HORIZONTAL CONSOLE SHELL ==================== -->
+    <div id="consoleShell" class="w-full h-full flex flex-col justify-between overflow-hidden">
+
+        <!-- TOP STATUS BAR -->
+        <header class="w-full px-4 sm:px-8 pt-2 pb-1 flex items-center justify-between shrink-0 z-30">
+            <!-- Left: Customizable User Profile Pill + Telemetry -->
+            <div class="flex items-center gap-2.5">
+                <button id="topProfileBtn"
+                    data-tooltip-title="User Profile & Avatar Studio"
+                    data-tooltip-sub="Customize name, ID, bio & Mario/gaming avatars"
+                    onmouseenter="scheduleTooltip(this, 'below')"
+                    onmouseleave="clearTooltip()"
+                    onclick="openModal('profileModal')"
+                    class="top-focus-item flex items-center gap-2 p-1 pr-3 rounded-full bg-black/35 hover:bg-black/50 border border-white/15 transition">
+                    <div id="headerAvatarWrapper" class="w-8 h-8 sm:w-9 sm:h-9 rounded-full overflow-hidden bg-gradient-to-tr from-[#E60012] to-amber-500 flex items-center justify-center shadow border-2 border-white/90 shrink-0">
+                        <!-- Avatar rendered by JS -->
+                    </div>
+                    <div class="text-left min-w-0">
+                        <div id="headerDisplayName" class="text-xs font-extrabold leading-none truncate max-w-[110px]">Adi</div>
+                        <div id="headerUserBio" class="text-[9px] text-cyan-300 font-semibold mt-0.5 truncate max-w-[130px]">People's Console</div>
+                    </div>
+                </button>
+
+                <div class="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/25 border border-white/10 text-[10px] font-semibold text-gray-300">
+                    <span id="gamepadDot" class="w-2 h-2 rounded-full bg-gray-500"></span>
+                    <span id="inputTelemetry">Touch / KB Ready</span>
+                </div>
+            </div>
+
+            <!-- Right: Language, Fullscreen, Add ROM, Audio, Clock, Battery -->
+            <div class="flex items-center gap-2 sm:gap-3 text-xs font-bold">
+                <select id="topLanguageSelect"
+                    data-tooltip-title="Console & Core Language"
+                    data-tooltip-sub="Switch system & emulator language"
+                    onmouseenter="scheduleTooltip(this, 'below')"
+                    onmouseleave="clearTooltip()"
+                    onchange="setConsoleLanguage(this.value)"
+                    class="px-2 py-1 rounded-full bg-black/35 border border-white/15 text-[11px] font-extrabold text-cyan-300 focus:outline-none cursor-pointer">
+                    <option value="en-US">🌐 English</option>
+                    <option value="hi-IN">🌐 हिन्दी</option>
+                    <option value="ja-JP">🌐 日本語</option>
+                </select>
+
+                <button id="fullscreenToggleBtn"
+                    data-tooltip-title="Fullscreen Handheld Mode"
+                    data-tooltip-sub="Hide browser bar for true console view"
+                    onmouseenter="scheduleTooltip(this, 'below')"
+                    onmouseleave="clearTooltip()"
+                    onclick="enterFullscreenConsole()"
+                    class="px-2.5 py-1 rounded-full bg-emerald-500/20 hover:bg-emerald-500/35 text-emerald-300 border border-emerald-400/40 text-[11px] font-extrabold flex items-center gap-1 transition">
+                    <span>⛶</span> <span id="fsBtnText">Full Screen</span>
+                </button>
+
+                <button
+                    data-tooltip-title="Import Game ROM"
+                    data-tooltip-sub="Load .gba, .nes, .sfc, .n64, .nds, .zip"
+                    onmouseenter="scheduleTooltip(this, 'below')"
+                    onmouseleave="clearTooltip()"
+                    onclick="openModal('addRomModal')"
+                    class="px-2.5 py-1 rounded-full bg-[#E60012]/85 hover:bg-[#E60012] text-white border border-white/20 text-[11px] font-extrabold flex items-center gap-1 shadow transition">
+                    <span>+</span> Add ROM
+                </button>
+
+                <button
+                    data-tooltip-title="Console Audio"
+                    data-tooltip-sub="Mute or unmute Switch UI sounds"
+                    onmouseenter="scheduleTooltip(this, 'below')"
+                    onmouseleave="clearTooltip()"
+                    onclick="toggleAudio()"
+                    class="p-1.5 rounded-full bg-black/25 hover:bg-black/40 border border-white/10 transition">
+                    <svg id="soundOnIcon" class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/>
+                    </svg>
+                    <svg id="soundOffIcon" class="w-4 h-4 text-gray-400 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15zM17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"/>
+                    </svg>
+                </button>
+
+                <span id="clockDisplay" class="hidden sm:inline tracking-wider text-xs">12:00 PM</span>
+
+                <div class="flex items-center gap-1">
+                    <span id="batteryText" class="text-[11px] font-extrabold">100%</span>
+                    <div class="w-5 h-2.5 border border-current rounded-sm p-0.5 flex items-center relative">
+                        <div id="batteryFill" class="h-full bg-emerald-400 transition-all duration-500" style="width: 100%;"></div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- MAIN HORIZONTAL GAME CAROUSEL -->
+        <main class="flex-1 min-h-0 flex flex-col justify-center relative overflow-hidden py-1">
+            <!-- Floating Active Software Title Bar -->
+            <div class="px-6 sm:px-12 mb-1 flex items-center justify-between shrink-0">
+                <div class="flex items-center gap-2 min-w-0">
+                    <span id="rowBadge" class="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-[10px] font-extrabold uppercase tracking-wider shrink-0">
+                        Software
+                    </span>
+                    <h1 id="activeTitleText" class="text-base sm:text-xl md:text-2xl font-extrabold tracking-tight text-cyan-400 truncate">
+                        + Add Your Game ROM
+                    </h1>
+                </div>
+                <div id="libraryCountBadge" class="text-[11px] text-gray-400 font-semibold shrink-0 ml-3">
+                    0 ROMs Ready
+                </div>
+            </div>
+
+            <!-- Horizontal Scrollable Tiles Container -->
+            <div id="gameCarousel" class="w-full px-6 sm:px-12 py-2 flex items-center gap-4 sm:gap-5 overflow-x-auto no-scrollbar scroll-smooth flex-1 min-h-0">
+                <!-- Tiles rendered dynamically -->
+            </div>
+
+            <!-- BOTTOM CIRCULAR SYSTEM ICONS (With Delayed Focus Tooltips) -->
+            <div class="mt-1 sm:mt-2 flex items-center justify-center gap-3.5 sm:gap-5 px-4 shrink-0">
+                <!-- 0: Nintendo eShop / Add ROM -->
+                <button data-bottom-idx="0"
+                    data-tooltip-title="Nintendo eShop / Add ROM"
+                    data-tooltip-sub="Load local game files & auto-fetch posters"
+                    onmouseenter="scheduleTooltip(this, 'above')"
+                    onmouseleave="clearTooltip()"
+                    onclick="triggerBottomAction(0)"
+                    class="bottom-nav-btn w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-[#2D2D2D] hover:bg-[#3A3A3A] flex items-center justify-center shadow-lg border-2 border-transparent transition-all">
+                    <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+                    </svg>
+                </button>
+
+                <!-- 1: Free Homebrew Hub & Language Guide -->
+                <button data-bottom-idx="1"
+                    data-tooltip-title="Free Homebrew Store & Guide"
+                    data-tooltip-sub="Get free legal ROMs & change in-game language"
+                    onmouseenter="scheduleTooltip(this, 'above')"
+                    onmouseleave="clearTooltip()"
+                    onclick="triggerBottomAction(1)"
+                    class="bottom-nav-btn w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-[#2D2D2D] hover:bg-[#3A3A3A] flex items-center justify-center shadow-lg border-2 border-transparent transition-all">
+                    <svg class="w-5 h-5 text-[#E60012]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"/>
+                    </svg>
+                </button>
+
+                <!-- 2: All Software / Library Manager -->
+                <button data-bottom-idx="2"
+                    data-tooltip-title="All Software Library"
+                    data-tooltip-sub="Manage, launch or delete installed ROMs"
+                    onmouseenter="scheduleTooltip(this, 'above')"
+                    onmouseleave="clearTooltip()"
+                    onclick="triggerBottomAction(2)"
+                    class="bottom-nav-btn w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-[#2D2D2D] hover:bg-[#3A3A3A] flex items-center justify-center shadow-lg border-2 border-transparent transition-all">
+                    <svg class="w-5 h-5 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
+                    </svg>
+                </button>
+
+                <!-- 3: Controllers & Grip -->
+                <button data-bottom-idx="3"
+                    data-tooltip-title="Controllers & Grip"
+                    data-tooltip-sub="Pair Bluetooth gamepad & test buttons"
+                    onmouseenter="scheduleTooltip(this, 'above')"
+                    onmouseleave="clearTooltip()"
+                    onclick="triggerBottomAction(3)"
+                    class="bottom-nav-btn w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-[#2D2D2D] hover:bg-[#3A3A3A] flex items-center justify-center shadow-lg border-2 border-transparent transition-all">
+                    <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"/>
+                    </svg>
+                </button>
+
+                <!-- 4: System Settings -->
+                <button data-bottom-idx="4"
+                    data-tooltip-title="System Settings"
+                    data-tooltip-sub="Themes, language, profile & audio options"
+                    onmouseenter="scheduleTooltip(this, 'above')"
+                    onmouseleave="clearTooltip()"
+                    onclick="triggerBottomAction(4)"
+                    class="bottom-nav-btn w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-[#2D2D2D] hover:bg-[#3A3A3A] flex items-center justify-center shadow-lg border-2 border-transparent transition-all">
+                    <svg class="w-5 h-5 text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    </svg>
+                </button>
+
+                <!-- 5: Fullscreen / Display Mode -->
+                <button data-bottom-idx="5"
+                    data-tooltip-title="Display & Fullscreen"
+                    data-tooltip-sub="Expand console to edge-to-edge screen"
+                    onmouseenter="scheduleTooltip(this, 'above')"
+                    onmouseleave="clearTooltip()"
+                    onclick="triggerBottomAction(5)"
+                    class="bottom-nav-btn w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-[#2D2D2D] hover:bg-[#3A3A3A] flex items-center justify-center shadow-lg border-2 border-transparent transition-all">
+                    <svg class="w-5 h-5 text-indigo-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/>
+                    </svg>
+                </button>
+            </div>
+        </main>
+
+        <!-- BOTTOM CONTROLLER LEGEND BAR -->
+        <footer class="w-full px-4 sm:px-8 py-1.5 border-t border-white/15 flex items-center justify-between text-[11px] font-bold bg-black/25 shrink-0">
+            <div class="flex items-center gap-2.5">
+                <div class="flex items-center gap-1 px-2 py-0.5 rounded bg-white/10">
+                    <span class="w-1.5 h-3 rounded-l bg-cyan-400"></span>
+                    <span class="w-3.5 h-3 bg-gray-700"></span>
+                    <span class="w-1.5 h-3 rounded-r bg-[#E60012]"></span>
+                    <span class="ml-1 text-[10px]">NX-OS Horizon</span>
+                </div>
+                <span id="gamepadActiveLabel" class="hidden text-emerald-400 text-[10px] animate-pulse">🎮 Controller Linked</span>
+            </div>
+
+            <div class="flex items-center gap-3 sm:gap-5">
+                <button onclick="openModal('profileModal')" class="hidden sm:flex items-center hover:text-cyan-400 transition">
+                    <span class="btn-badge">X</span>
+                    <span>Profile</span>
+                </button>
+                <button onclick="openModal('libraryModal')" class="flex items-center hover:text-cyan-400 transition">
+                    <span class="btn-badge">Y</span>
+                    <span>Library</span>
+                </button>
+                <button onclick="activateFocusedItem()" class="flex items-center hover:text-cyan-400 transition">
+                    <span class="btn-badge">A</span>
+                    <span id="actionHintLabel">Load ROM</span>
+                </button>
+            </div>
+        </footer>
+    </div>
+
+    <!-- ==================== MODAL 1: USER PROFILE & AVATAR STUDIO ==================== -->
+    <div id="profileModal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden flex items-center justify-center p-3">
+        <div class="w-full max-w-3xl bg-[#202020] text-white rounded-2xl border border-white/15 shadow-2xl overflow-hidden flex flex-col max-h-[94dvh]">
+            <div class="px-4 py-2.5 bg-gradient-to-r from-[#E60012] to-rose-700 flex items-center justify-between shrink-0">
+                <div>
+                    <h2 class="text-sm sm:text-base font-extrabold">👤 User Profile & Avatar Studio</h2>
+                    <p class="text-[10px] text-white/85">Customize your gamer identity, Friend Code, Bio & Mario/Gaming Avatars</p>
+                </div>
+                <button onclick="closeAllModals()" class="px-2.5 py-1 rounded-lg bg-black/30 hover:bg-black/50 text-xs font-extrabold">
+                    [B] Close
+                </button>
+            </div>
+
+            <div class="p-4 overflow-y-auto grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
+                <!-- Left Column: Live Avatar Preview + Custom Poster Upload -->
+                <div class="md:col-span-5 flex flex-col items-center bg-[#161616] p-4 rounded-2xl border border-white/10">
+                    <div id="profilePreviewAvatar" class="w-24 h-24 sm:w-28 sm:h-28 rounded-full overflow-hidden border-4 border-cyan-400 shadow-[0_0_24px_rgba(0,195,227,0.4)] flex items-center justify-center bg-[#252525]">
+                        <!-- Rendered dynamically -->
+                    </div>
+                    <div id="profilePreviewName" class="mt-2.5 text-base font-extrabold text-white">Adi</div>
+                    <div id="profilePreviewCode" class="text-[11px] font-mono text-cyan-300 mt-0.5">SW-4829-1904-7712</div>
+                    <p id="profilePreviewBio" class="text-[11px] text-gray-400 text-center mt-1.5 line-clamp-2">
+                        Retro & Rally Gamer | People's Console
+                    </p>
+
+                    <label class="mt-3 w-full cursor-pointer px-3 py-2 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/40 text-cyan-300 text-xs font-extrabold text-center transition">
+                        📸 Upload Custom Poster / Photo
+                        <input id="customAvatarUpload" type="file" accept="image/*" onchange="handleCustomAvatarFile(event)" class="hidden">
+                    </label>
+                </div>
+
+                <!-- Right Column: Built-In Mario/Gaming Avatars + Name/ID/Bio Inputs -->
+                <div class="md:col-span-7 space-y-3">
+                    <div>
+                        <label class="block text-[11px] font-extrabold uppercase tracking-wider text-gray-300 mb-1.5">
+                            Choose Console Character Avatar
+                        </label>
+                        <div id="avatarPresetGrid" class="grid grid-cols-4 gap-2">
+                            <!-- 8 Built-in Gaming Avatars injected by JS -->
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        <div>
+                            <label class="block text-[11px] font-bold text-gray-300 mb-1">Display Name</label>
+                            <input id="profileNameInput" type="text" maxlength="20" oninput="syncProfilePreview()"
+                                class="w-full px-3 py-2 rounded-xl bg-[#151515] border border-white/15 text-xs text-white focus:outline-none focus:border-cyan-400">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-gray-300 mb-1">User ID / Friend Code</label>
+                            <input id="profileCodeInput" type="text" maxlength="22" oninput="syncProfilePreview()"
+                                class="w-full px-3 py-2 rounded-xl bg-[#151515] border border-white/15 text-xs font-mono text-cyan-300 focus:outline-none focus:border-cyan-400">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-300 mb-1">Custom Bio / Gamer Tagline</label>
+                        <input id="profileBioInput" type="text" maxlength="60" oninput="syncProfilePreview()"
+                            placeholder="Write your gaming status or bio..."
+                            class="w-full px-3 py-2 rounded-xl bg-[#151515] border border-white/15 text-xs text-white focus:outline-none focus:border-cyan-400">
+                    </div>
+
+                    <div class="pt-1 flex items-center justify-end gap-2.5">
+                        <button type="button" onclick="closeAllModals()" class="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold">
+                            Cancel
+                        </button>
+                        <button type="button" onclick="saveUserProfile()" class="px-5 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-extrabold text-xs uppercase tracking-wider shadow-lg transition">
+                            Save Profile
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== MODAL 2: ADD ROM WITH AUTO ORIGINAL BOX ART FETCHER ==================== -->
+    <div id="addRomModal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden flex items-center justify-center p-3">
+        <div class="w-full max-w-3xl bg-[#202020] text-white rounded-2xl border border-white/15 shadow-2xl overflow-hidden flex flex-col max-h-[94dvh]">
+            <div class="px-4 py-2.5 bg-gradient-to-r from-cyan-600 to-blue-700 flex items-center justify-between shrink-0">
+                <div>
+                    <h2 class="text-sm sm:text-base font-extrabold">Load Real Game ROM & Auto-Fetch Original Poster</h2>
+                    <p class="text-[10px] text-white/85">Supports .gba, .nes, .sfc, .n64, .nds, .gb, .gbc & .zip archives</p>
+                </div>
+                <button onclick="closeAllModals()" class="px-2.5 py-1 rounded-lg bg-black/30 hover:bg-black/50 text-xs font-extrabold">
+                    [B] Close
+                </button>
+            </div>
+
+            <form id="addRomForm" onsubmit="handleRomUpload(event)" class="p-4 overflow-y-auto grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
+                <!-- Left Column: Live Original Cover Art Preview Card -->
+                <div class="md:col-span-4 flex flex-col items-center">
+                    <div class="w-36 h-36 sm:w-44 sm:h-44 rounded-2xl bg-[#141414] border-2 border-cyan-500/40 overflow-hidden relative flex items-center justify-center shadow-xl">
+                        <img id="coverPreviewImg" src="" alt="Original Cover Art" class="w-full h-full object-cover hidden">
+                        <div id="coverPlaceholderBox" class="text-center p-3">
+                            <div id="coverStatusIcon" class="text-3xl mb-1">🎨</div>
+                            <div id="coverStatusText" class="text-[10px] text-gray-400 font-semibold leading-tight">
+                                Select a ROM to auto-fetch its original poster
+                            </div>
+                        </div>
+                    </div>
+                    <button type="button" onclick="retryFetchCoverArt()" class="mt-2 px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-[11px] font-bold text-cyan-300 transition">
+                        🔄 Re-Fetch Original Poster
+                    </button>
+                </div>
+
+                <!-- Right Column: ROM Inputs -->
+                <div class="md:col-span-8 space-y-3">
+                    <div>
+                        <label class="block text-[11px] font-extrabold uppercase tracking-wider text-cyan-400 mb-1">
+                            1. Select Real Game File (.gba, .nes, .sfc, .n64, .nds, .gb, .zip)
+                        </label>
+                        <input id="romFileInput" type="file" required
+                            accept=".gba,.gbc,.gb,.nes,.sfc,.smc,.n64,.z64,.v64,.nds,.iso,.bin,.cue,.chd,.nsp,.xci,.zip"
+                            onchange="onRomFileSelected()"
+                            class="w-full text-xs text-gray-300 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-extrabold file:bg-cyan-500 file:text-black hover:file:bg-cyan-400 bg-[#151515] rounded-xl border border-white/15 p-1.5 cursor-pointer">
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[11px] font-bold text-gray-300 mb-1">2. Game Title (Auto-Cleaned)</label>
+                            <input id="romTitleInput" type="text" required placeholder="e.g. Goodboy Galaxy"
+                                onchange="retryFetchCoverArt()"
+                                class="w-full px-3 py-2 rounded-xl bg-[#151515] border border-white/15 text-xs text-white focus:outline-none focus:border-cyan-400">
+                        </div>
+
+                        <div>
+                            <label class="block text-[11px] font-bold text-gray-300 mb-1">3. System / Core</label>
+                            <select id="romSystemSelect" onchange="retryFetchCoverArt()" class="w-full px-3 py-2 rounded-xl bg-[#151515] border border-white/15 text-xs text-white focus:outline-none focus:border-cyan-400">
+                                <option value="gba">Game Boy Advance (.gba / .zip)</option>
+                                <option value="gbc">Game Boy / Color (.gb, .gbc)</option>
+                                <option value="nes">Nintendo NES (.nes)</option>
+                                <option value="snes">Super Nintendo (.sfc, .smc)</option>
+                                <option value="n64">Nintendo 64 (.n64, .z64)</option>
+                                <option value="nds">Nintendo DS (.nds)</option>
+                                <option value="psx">PlayStation 1 (.bin, .iso)</option>
+                                <option value="switch">Nintendo Switch (.nsp, .xci)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-300 mb-1">4. Custom Poster Override (Optional)</label>
+                        <input id="romCoverInput" type="file" accept="image/*" onchange="handleManualCoverUpload()"
+                            class="w-full text-[11px] text-gray-400 file:mr-3 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-[11px] file:font-bold file:bg-white/15 file:text-white bg-[#151515] rounded-xl border border-white/15 p-1 cursor-pointer">
+                    </div>
+
+                    <div class="pt-1 flex items-center justify-end gap-2.5">
+                        <button type="button" onclick="closeAllModals()" class="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold">
+                            Cancel
+                        </button>
+                        <button type="submit" id="saveRomBtn" class="px-5 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-extrabold text-xs uppercase tracking-wider shadow-lg transition">
+                            Install to Home Screen
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ==================== MODAL 3: LIBRARY MANAGER ==================== -->
+    <div id="libraryModal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden flex items-center justify-center p-3">
+        <div class="w-full max-w-3xl bg-[#222222] text-white rounded-2xl border border-white/15 shadow-2xl overflow-hidden flex flex-col max-h-[90dvh]">
+            <div class="px-4 py-3 bg-[#191919] border-b border-white/10 flex items-center justify-between shrink-0">
+                <h2 class="text-sm sm:text-base font-extrabold">📚 All Software Library</h2>
+                <div class="flex items-center gap-2">
+                    <button onclick="openModal('addRomModal')" class="px-3 py-1 rounded-lg bg-cyan-500 text-black text-xs font-extrabold">+ Add ROM</button>
+                    <button onclick="closeAllModals()" class="px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-bold">[B] Close</button>
+                </div>
+            </div>
+            <div id="libraryListContainer" class="p-4 overflow-y-auto space-y-2"></div>
+        </div>
+    </div>
+
+    <!-- ==================== MODAL 4: CONTROLLERS & INPUT TESTER ==================== -->
+    <div id="controllerModal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden flex items-center justify-center p-3">
+        <div class="w-full max-w-xl bg-[#222222] text-white rounded-2xl border border-white/15 shadow-2xl overflow-hidden">
+            <div class="px-4 py-3 bg-[#191919] border-b border-white/10 flex items-center justify-between">
+                <h2 class="text-sm sm:text-base font-extrabold">🎮 Controllers & Grip Diagnostics</h2>
+                <button onclick="closeAllModals()" class="px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-bold">[B] Close</button>
+            </div>
+            <div class="p-4 space-y-3">
+                <div class="p-3 rounded-xl bg-[#181818] border border-white/10 flex items-center justify-between">
+                    <div>
+                        <div class="text-[10px] text-gray-400 uppercase font-bold">Hardware Gamepad</div>
+                        <div id="modalGamepadStatus" class="text-xs sm:text-sm font-extrabold text-amber-400 mt-0.5">No External Controller Detected</div>
+                    </div>
+                    <span class="text-2xl">🕹️</span>
+                </div>
+                <div class="grid grid-cols-4 gap-2 text-center text-[11px] font-bold">
+                    <div id="btnVis-A" class="p-2 rounded-xl bg-[#2E2E2E] border border-white/10">A (Select)</div>
+                    <div id="btnVis-B" class="p-2 rounded-xl bg-[#2E2E2E] border border-white/10">B (Back)</div>
+                    <div id="btnVis-Y" class="p-2 rounded-xl bg-[#2E2E2E] border border-white/10">Y (Library)</div>
+                    <div id="btnVis-X" class="p-2 rounded-xl bg-[#2E2E2E] border border-white/10">X (Profile)</div>
+                </div>
+                <div class="p-2.5 rounded-xl bg-black/40 border border-cyan-500/30 text-center">
+                    <div id="liveInputReadout" class="text-xs font-mono font-bold text-cyan-300">Move joystick or press buttons...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== MODAL 5: SYSTEM SETTINGS ==================== -->
+    <div id="settingsModal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden flex items-center justify-center p-3">
+        <div class="w-full max-w-lg bg-[#222222] text-white rounded-2xl border border-white/15 shadow-2xl overflow-hidden">
+            <div class="px-4 py-3 bg-[#191919] border-b border-white/10 flex items-center justify-between">
+                <h2 class="text-sm sm:text-base font-extrabold">⚙️ Console Settings</h2>
+                <button onclick="closeAllModals()" class="px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-bold">[B] Close</button>
+            </div>
+            <div class="p-4 space-y-2.5">
+                <div class="flex items-center justify-between p-3 rounded-xl bg-[#181818]">
+                    <div>
+                        <div class="font-bold text-xs sm:text-sm">User Profile & Avatar</div>
+                        <div class="text-[11px] text-gray-400">Edit Name, ID, Bio & Mario/Gaming Avatars</div>
+                    </div>
+                    <button onclick="openModal('profileModal')" class="px-3 py-1.5 rounded-lg bg-cyan-500 text-black font-extrabold text-xs">
+                        Customize
+                    </button>
+                </div>
+                <div class="flex items-center justify-between p-3 rounded-xl bg-[#181818]">
+                    <div>
+                        <div class="font-bold text-xs sm:text-sm">Emulator Core Language</div>
+                        <div class="text-[11px] text-gray-400">Sets system & emulator menu language</div>
+                    </div>
+                    <select id="settingsLanguageSelect" onchange="setConsoleLanguage(this.value)"
+                        class="px-3 py-1.5 rounded-lg bg-white/15 text-white font-extrabold text-xs">
+                        <option value="en-US">English (US)</option>
+                        <option value="hi-IN">हिन्दी (Hindi)</option>
+                        <option value="ja-JP">日本語 (Japanese)</option>
+                    </select>
+                </div>
+                <div class="flex items-center justify-between p-3 rounded-xl bg-[#181818]">
+                    <div>
+                        <div class="font-bold text-xs sm:text-sm">Dashboard Theme</div>
+                        <div class="text-[11px] text-gray-400">Basic Black / Basic White</div>
+                    </div>
+                    <button onclick="toggleTheme()" id="themeBtn" class="px-3 py-1.5 rounded-lg bg-white/15 text-white font-extrabold text-xs">
+                        Basic Black
+                    </button>
+                </div>
+                <div class="flex items-center justify-between p-3 rounded-xl bg-[#181818]">
+                    <div>
+                        <div class="font-bold text-xs sm:text-sm">UI Navigation Sounds</div>
+                        <div class="text-[11px] text-gray-400">Synthesized Switch click audio</div>
+                    </div>
+                    <button onclick="toggleAudio()" id="settingsAudioBtn" class="px-3 py-1.5 rounded-lg bg-emerald-500 text-black font-extrabold text-xs">
+                        Enabled
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== MODAL 6: HOMEBREW HUB & LANGUAGE GUIDE ==================== -->
+    <div id="infoModal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden flex items-center justify-center p-3">
+        <div class="w-full max-w-xl bg-[#222222] text-white rounded-2xl border border-white/15 shadow-2xl p-5 space-y-3 max-h-[92dvh] overflow-y-auto">
+            <div class="flex items-center justify-between">
+                <h3 class="text-base font-extrabold text-cyan-400">🕹️ Free Homebrew Games & Language Guide</h3>
+                <button onclick="closeAllModals()" class="px-2.5 py-1 rounded-lg bg-white/10 text-xs font-bold">[B] Close</button>
+            </div>
+            <div class="p-3 rounded-xl bg-[#171717] border border-white/10 text-xs space-y-2 text-gray-300">
+                <div class="font-extrabold text-white">1. Where to get 100% Free Legal ROMs:</div>
+                <div class="flex flex-wrap gap-2 pt-0.5">
+                    <a href="https://itch.io/games/free/tag-gba" target="_blank" rel="noopener" class="px-3 py-1.5 rounded-lg bg-[#E60012] text-white font-extrabold text-[11px]">
+                        Open itch.io Free GBA ROMs ↗
+                    </a>
+                    <a href="https://hh.gbdev.io/" target="_blank" rel="noopener" class="px-3 py-1.5 rounded-lg bg-cyan-500 text-black font-extrabold text-[11px]">
+                        Open Homebrew Hub ↗
+                    </a>
+                </div>
+                <div class="text-[11px] text-gray-400 pt-1">
+                    Tip: You can import downloaded <b>.gba</b>, <b>.nes</b>, <b>.sfc</b>, <b>.gb</b>, or even <b>.zip</b> files directly without unzipping!
+                </div>
+            </div>
+            <div class="p-3 rounded-xl bg-[#171717] border border-white/10 text-xs space-y-1 text-gray-300">
+                <div class="font-extrabold text-white">2. How to switch Goodboy Galaxy to English:</div>
+                <p class="text-[11px] leading-relaxed">
+                    On the game's first Title Screen, press <b>Down</b> on the D-Pad to highlight the Language / Flag option, then press <b>Left / Right</b> until you see the UK/US English flag and press <b>A</b>!
+                </p>
+            </div>
+            <button onclick="closeAllModals()" class="w-full py-2 rounded-xl bg-cyan-500 text-black font-extrabold text-xs uppercase">
+                Got It
+            </button>
+        </div>
+    </div>
+
+    <!-- ==================== DIRECT IN-DOCUMENT EMULATOR STAGE (MOBILE CHROME FIXED) ==================== -->
+    <div id="emulatorOverlay" class="fixed inset-0 z-50 bg-black hidden flex flex-col w-screen h-[100dvh]">
+        <!-- Top Emulator Control Strip -->
+        <div class="w-full px-3 sm:px-5 py-1.5 bg-[#141414] border-b border-white/15 flex items-center justify-between text-white shrink-0 z-30">
+            <div class="flex items-center gap-2 min-w-0">
+                <span id="emuCoreBadge" class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-extrabold uppercase shrink-0">
+                    WASM CORE READY
+                </span>
+                <span id="emuRunningTitle" class="font-extrabold text-xs sm:text-sm truncate">Running ROM</span>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+                <button onclick="enterFullscreenConsole()" class="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-[11px] font-bold">
+                    ⛶ Fullscreen
+                </button>
+                <button onclick="exitEmulator()" class="px-3.5 py-1 rounded-lg bg-[#E60012] hover:bg-red-600 text-xs font-extrabold flex items-center gap-1 shadow">
+                    <span>✕</span> Exit to Home
+                </button>
+            </div>
+        </div>
+
+        <!-- Boot Progress / Diagnostics Banner (Auto-hides once EmulatorJS canvas mounts) -->
+        <div id="emulatorBootStatus" class="absolute inset-x-0 top-12 bottom-0 z-10 bg-black/95 flex flex-col items-center justify-center p-6 text-center pointer-events-none">
+            <div class="w-12 h-12 rounded-full border-4 border-cyan-400 border-t-transparent animate-spin mb-4"></div>
+            <div id="bootStatusHeadline" class="text-sm sm:text-base font-extrabold text-cyan-300">Booting Console Core...</div>
+            <div id="bootStatusSub" class="text-xs text-gray-400 mt-1 max-w-md">
+                Initializing WebAssembly emulator engine for Android Chrome. Keep internet active on first boot to cache the core.
+            </div>
+        </div>
+
+        <!-- Direct EmulatorJS Stage (No null-origin iframe sandbox!) -->
+        <div id="emulator-stage" class="flex-1 w-full min-h-0 relative bg-black overflow-hidden"></div>
+    </div>
+
+    <!-- ==================== EXTERNAL SWITCH CORE BRIDGE OVERLAY (.NSP / .XCI) ==================== -->
+    <div id="switchBridgeOverlay" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="w-full max-w-lg bg-[#202020] text-white rounded-2xl border border-cyan-500/40 shadow-2xl p-5 space-y-3">
+            <div class="flex items-center justify-between">
+                <span class="px-2.5 py-1 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40 text-[11px] font-extrabold uppercase">
+                    External Switch Core Bridge
+                </span>
+                <button onclick="closeSwitchBridge()" class="px-3 py-1 rounded-lg bg-white/10 text-xs font-bold">[B] Home</button>
+            </div>
+            <h3 id="bridgeGameTitle" class="text-lg font-extrabold text-cyan-400">Switch Title (.nsp)</h3>
+            <p class="text-xs text-gray-300 leading-relaxed">
+                Switch binaries (<code class="text-cyan-300">.nsp</code> / <code class="text-cyan-300">.xci</code>) require native ARM64/Vulkan emulators (like Sudachi or Yuzu). Point your native app's directory to <span id="bridgeFileName" class="text-amber-300 font-mono">file.nsp</span>.
+            </p>
+            <button onclick="closeSwitchBridge()" class="w-full py-2.5 rounded-xl bg-cyan-500 text-black font-extrabold text-xs">
+                Back to Home Screen
+            </button>
+        </div>
+    </div>
+
+    <script>
+        /* =========================================================================
+           1. DELAYED CONSOLE TOOLTIP SYSTEM (600ms Hover/Joystick Delay -> 2.5s Stay)
+           ========================================================================= */
+        let tooltipShowTimer = null;
+        let tooltipHideTimer = null;
+
+        function scheduleTooltip(targetEl, placement = 'above') {
+            clearTooltip();
+            if (!targetEl || activeModalId || isEmulatorActive || isBridgeActive) return;
+
+            const title = targetEl.getAttribute('data-tooltip-title');
+            const sub = targetEl.getAttribute('data-tooltip-sub');
+            if (!title) return;
+
+            tooltipShowTimer = setTimeout(() => {
+                const pill = document.getElementById('floatingTooltip');
+                document.getElementById('tooltipTitle').textContent = title;
+                document.getElementById('tooltipSub').textContent = sub || '';
+
+                const rect = targetEl.getBoundingClientRect();
+                const centerX = Math.max(110, Math.min(window.innerWidth - 110, rect.left + rect.width / 2));
+                pill.style.left = `${centerX}px`;
+
+                if (placement === 'below') {
+                    pill.style.top = `${rect.bottom + 8}px`;
+                    pill.style.bottom = 'auto';
+                } else {
+                    pill.style.bottom = `${window.innerHeight - rect.top + 10}px`;
+                    pill.style.top = 'auto';
+                }
+
+                pill.classList.remove('hidden', 'fading-out');
+                pill.classList.add('console-tooltip');
+
+                tooltipHideTimer = setTimeout(() => {
+                    pill.classList.add('fading-out');
+                    setTimeout(() => pill.classList.add('hidden'), 280);
+                }, 2500);
+            }, 600);
+        }
+
+        function clearTooltip() {
+            if (tooltipShowTimer) clearTimeout(tooltipShowTimer);
+            if (tooltipHideTimer) clearTimeout(tooltipHideTimer);
+            tooltipShowTimer = null;
+            tooltipHideTimer = null;
+            const pill = document.getElementById('floatingTooltip');
+            if (pill) pill.classList.add('hidden');
+        }
+
+        /* =========================================================================
+           2. USER PROFILE & MARIO / GAMING AVATAR STUDIO (Persisted in localStorage)
+           ========================================================================= */
+        const AVATAR_PRESETS = [
+            {
+                id: 'mario_cap',
+                name: 'Red Cap Hero',
+                svg: `<svg viewBox="0 0 100 100" class="w-full h-full"><rect width="100" height="100" fill="#E60012"/><path d="M18 52 C18 24, 82 24, 82 52 Z" fill="#FF1E2D"/><ellipse cx="50" cy="54" rx="38" ry="10" fill="#99000B"/><circle cx="50" cy="39" r="13" fill="#FFFFFF"/><text x="50" y="45" text-anchor="middle" font-family="Inter,sans-serif" font-weight="900" font-size="18" fill="#E60012">M</text><circle cx="50" cy="74" r="16" fill="#FFD1A9"/><rect x="37" y="75" width="26" height="6" rx="3" fill="#3B2314"/></svg>`
+            },
+            {
+                id: 'luigi_cap',
+                name: 'Green Cap Bro',
+                svg: `<svg viewBox="0 0 100 100" class="w-full h-full"><rect width="100" height="100" fill="#00A651"/><path d="M20 52 C20 22, 80 22, 80 52 Z" fill="#00C853"/><ellipse cx="50" cy="54" rx="36" ry="10" fill="#006633"/><circle cx="50" cy="39" r="13" fill="#FFFFFF"/><text x="50" y="45" text-anchor="middle" font-family="Inter,sans-serif" font-weight="900" font-size="18" fill="#00A651">L</text><circle cx="50" cy="74" r="15" fill="#FFD1A9"/><rect x="38" y="75" width="24" height="5" rx="2.5" fill="#3B2314"/></svg>`
+            },
+            {
+                id: 'link_tunic',
+                name: 'Hyrule Hero',
+                svg: `<svg viewBox="0 0 100 100" class="w-full h-full"><rect width="100" height="100" fill="#1B5E20"/><polygon points="50,14 22,52 78,52" fill="#2E7D32"/><polygon points="50,58 34,82 66,82" fill="#FFD600"/><polygon points="50,58 42,70 58,70" fill="#1B5E20"/></svg>`
+            },
+            {
+                id: 'bolt_mouse',
+                name: 'Thunder Bolt',
+                svg: `<svg viewBox="0 0 100 100" class="w-full h-full"><rect width="100" height="100" fill="#FFD600"/><polygon points="22,12 36,42 18,42" fill="#212121"/><polygon points="78,12 64,42 82,42" fill="#212121"/><circle cx="28" cy="66" r="9" fill="#E60012"/><circle cx="72" cy="66" r="9" fill="#E60012"/><polygon points="54,36 40,60 52,60 44,84 64,56 51,56" fill="#FF6D00"/></svg>`
+            },
+            {
+                id: 'visor_hunter',
+                name: 'Space Hunter',
+                svg: `<svg viewBox="0 0 100 100" class="w-full h-full"><rect width="100" height="100" fill="#B71C1C"/><circle cx="50" cy="52" r="32" fill="#FF6F00"/><polygon points="24,44 76,44 68,62 32,62" fill="#00E676"/><rect x="38" y="24" width="24" height="10" rx="4" fill="#FFD54F"/></svg>`
+            },
+            {
+                id: 'rally_driver',
+                name: 'Rally Pro',
+                svg: `<svg viewBox="0 0 100 100" class="w-full h-full"><rect width="100" height="100" fill="#0D47A1"/><circle cx="50" cy="52" r="32" fill="#FFFFFF"/><path d="M24 46 H76 V62 H24 Z" fill="#00C3E3"/><path d="M30 24 H70" stroke="#E60012" stroke-width="6"/></svg>`
+            },
+            {
+                id: 'retro_bot',
+                name: 'NX Bot',
+                svg: `<svg viewBox="0 0 100 100" class="w-full h-full"><rect width="100" height="100" fill="#263238"/><rect x="22" y="28" width="56" height="48" rx="12" fill="#00C3E3"/><circle cx="38" cy="48" r="7" fill="#111"/><circle cx="62" cy="48" r="7" fill="#111"/><rect x="36" y="62" width="28" height="6" rx="3" fill="#111"/></svg>`
+            },
+            {
+                id: 'star_power',
+                name: 'Super Star',
+                svg: `<svg viewBox="0 0 100 100" class="w-full h-full"><rect width="100" height="100" fill="#311B92"/><polygon points="50,14 61,38 87,41 68,59 73,85 50,72 27,85 32,59 13,41 39,38" fill="#FFEA00"/><rect x="42" y="45" width="4" height="12" rx="2" fill="#111"/><rect x="54" y="45" width="4" height="12" rx="2" fill="#111"/></svg>`
+            }
+        ];
+
+        let userProfile = {
+            name: 'Adi',
+            code: 'SW-4829-1904-7712',
+            bio: "Retro & Rally Gamer | People's Console",
+            avatarType: 'preset', // 'preset' | 'custom'
+            presetId: 'mario_cap',
+            customDataUrl: null
+        };
+
+        let tempDraftProfile = null;
+
+        function loadUserProfile() {
+            try {
+                const raw = localStorage.getItem('nx_os_user_profile');
+                if (raw) {
+                    userProfile = { ...userProfile, ...JSON.parse(raw) };
+                }
+            } catch (e) {}
+            applyProfileToHeader();
+        }
+
+        function getAvatarMarkup(profileObj) {
+            if (profileObj.avatarType === 'custom' && profileObj.customDataUrl) {
+                return `<img src="${profileObj.customDataUrl}" alt="User Avatar" class="w-full h-full object-cover">`;
+            }
+            const found = AVATAR_PRESETS.find(a => a.id === profileObj.presetId) || AVATAR_PRESETS[0];
+            return found.svg;
+        }
+
+        function applyProfileToHeader() {
+            document.getElementById('headerDisplayName').textContent = userProfile.name || 'Adi';
+            document.getElementById('headerUserBio').textContent = userProfile.bio || userProfile.code;
+            document.getElementById('headerAvatarWrapper').innerHTML = getAvatarMarkup(userProfile);
+        }
+
+        function initProfileModalUI() {
+            tempDraftProfile = { ...userProfile };
+            document.getElementById('profileNameInput').value = tempDraftProfile.name;
+            document.getElementById('profileCodeInput').value = tempDraftProfile.code;
+            document.getElementById('profileBioInput').value = tempDraftProfile.bio;
+
+            const grid = document.getElementById('avatarPresetGrid');
+            grid.innerHTML = '';
+            AVATAR_PRESETS.forEach(preset => {
+                const isSelected = tempDraftProfile.avatarType === 'preset' && tempDraftProfile.presetId === preset.id;
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.title = preset.name;
+                btn.className = `aspect-square rounded-xl overflow-hidden border-2 transition transform hover:scale-105 ${isSelected ? 'border-cyan-400 scale-105 shadow-lg' : 'border-white/15 opacity-85'}`;
+                btn.innerHTML = preset.svg;
+                btn.onclick = () => {
+                    playSwitchSound('tick');
+                    tempDraftProfile.avatarType = 'preset';
+                    tempDraftProfile.presetId = preset.id;
+                    initProfileModalUI();
+                };
+                grid.appendChild(btn);
+            });
+
+            syncProfilePreview();
+        }
+
+        function syncProfilePreview() {
+            if (!tempDraftProfile) return;
+            tempDraftProfile.name = document.getElementById('profileNameInput').value.trim() || 'Adi';
+            tempDraftProfile.code = document.getElementById('profileCodeInput').value.trim() || 'SW-4829-1904-7712';
+            tempDraftProfile.bio = document.getElementById('profileBioInput').value.trim() || "People's Console";
+
+            document.getElementById('profilePreviewAvatar').innerHTML = getAvatarMarkup(tempDraftProfile);
+            document.getElementById('profilePreviewName').textContent = tempDraftProfile.name;
+            document.getElementById('profilePreviewCode').textContent = tempDraftProfile.code;
+            document.getElementById('profilePreviewBio').textContent = tempDraftProfile.bio;
+        }
+
+        function handleCustomAvatarFile(e) {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = () => {
+                playSwitchSound('select');
+                tempDraftProfile.avatarType = 'custom';
+                tempDraftProfile.customDataUrl = reader.result;
+                initProfileModalUI();
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function saveUserProfile() {
+            syncProfilePreview();
+            userProfile = { ...tempDraftProfile };
+            localStorage.setItem('nx_os_user_profile', JSON.stringify(userProfile));
+            applyProfileToHeader();
+            playSwitchSound('snap');
+            closeAllModals(false);
+        }
+
+        /* =========================================================================
+           3. CONSOLE LANGUAGE & FULLSCREEN LANDSCAPE MANAGER
+           ========================================================================= */
+        let currentLanguage = localStorage.getItem('nx_os_lang') || 'en-US';
+
+        function setConsoleLanguage(lang) {
+            currentLanguage = lang;
+            localStorage.setItem('nx_os_lang', lang);
+            document.getElementById('topLanguageSelect').value = lang;
+            document.getElementById('settingsLanguageSelect').value = lang;
+            playSwitchSound('select');
+        }
+
+        function enterFullscreenConsole() {
+            playSwitchSound('select');
+            const docEl = document.documentElement;
+            if (!document.fullscreenElement) {
+                const req = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.msRequestFullscreen;
+                if (req) {
+                    req.call(docEl).then(() => {
+                        if (screen.orientation && screen.orientation.lock) {
+                            screen.orientation.lock('landscape').catch(() => {});
+                        }
+                    }).catch(() => {});
+                }
+            } else {
+                const exit = document.exitFullscreen || document.webkitExitFullscreen;
+                if (exit) exit.call(document).catch(() => {});
+            }
+        }
+
+        document.addEventListener('fullscreenchange', () => {
+            const isFs = !!document.fullscreenElement;
+            document.getElementById('fsBtnText').textContent = isFs ? 'Exit Full' : 'Full Screen';
+        });
+
+        /* =========================================================================
+           4. SYNTHESIZED SWITCH UI AUDIO (Suspended automatically during gameplay)
+           ========================================================================= */
+        let audioCtx = null;
+        let soundEnabled = true;
+
+        function initAudio() {
+            if (!audioCtx || audioCtx.state === 'closed') {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        }
+
+        function playSwitchSound(type) {
+            if (!soundEnabled || isEmulatorActive) return;
+            try {
+                initAudio();
+                const now = audioCtx.currentTime;
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                if (type === 'tick') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(640, now);
+                    osc.frequency.exponentialRampToValueAtTime(310, now + 0.04);
+                    gain.gain.setValueAtTime(0.12, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.045);
+                    osc.start(now);
+                    osc.stop(now + 0.05);
+                } else if (type === 'select') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(540, now);
+                    osc.frequency.exponentialRampToValueAtTime(990, now + 0.08);
+                    gain.gain.setValueAtTime(0.16, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+                    osc.start(now);
+                    osc.stop(now + 0.1);
+                } else if (type === 'back') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(460, now);
+                    osc.frequency.exponentialRampToValueAtTime(240, now + 0.08);
+                    gain.gain.setValueAtTime(0.14, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+                    osc.start(now);
+                    osc.stop(now + 0.1);
+                } else if (type === 'snap') {
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(880, now);
+                    osc.frequency.setValueAtTime(1320, now + 0.06);
+                    gain.gain.setValueAtTime(0.1, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+                    osc.start(now);
+                    osc.stop(now + 0.19);
+                }
+            } catch (e) {}
+        }
+
+        function toggleAudio() {
+            soundEnabled = !soundEnabled;
+            document.getElementById('soundOnIcon').classList.toggle('hidden', !soundEnabled);
+            document.getElementById('soundOffIcon').classList.toggle('hidden', soundEnabled);
+            const btn = document.getElementById('settingsAudioBtn');
+            if (btn) {
+                btn.textContent = soundEnabled ? 'Enabled' : 'Muted';
+                btn.className = soundEnabled
+                    ? 'px-3 py-1.5 rounded-lg bg-emerald-500 text-black font-extrabold text-xs'
+                    : 'px-3 py-1.5 rounded-lg bg-gray-600 text-white font-extrabold text-xs';
+            }
+            if (soundEnabled) playSwitchSound('select');
+        }
+
+        /* =========================================================================
+           5. INDEXEDDB PERSISTENT ROM STORAGE
+           ========================================================================= */
+        const DB_NAME = 'NX_OS_V3_DB';
+        const STORE_NAME = 'roms';
+        let dbInstance = null;
+        let savedRoms = [];
+
+        function openRomDatabase() {
+            return new Promise((resolve, reject) => {
+                const req = indexedDB.open(DB_NAME, 1);
+                req.onupgradeneeded = (e) => {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains(STORE_NAME)) {
+                        db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+                    }
+                };
+                req.onsuccess = (e) => {
+                    dbInstance = e.target.result;
+                    resolve(dbInstance);
+                };
+                req.onerror = (e) => reject(e.target.error);
+            });
+        }
+
+        function loadAllRomsFromDB() {
+            return new Promise((resolve) => {
+                if (!dbInstance) return resolve([]);
+                const tx = dbInstance.transaction(STORE_NAME, 'readonly');
+                const req = tx.objectStore(STORE_NAME).getAll();
+                req.onsuccess = () => {
+                    savedRoms = req.result || [];
+                    resolve(savedRoms);
+                };
+                req.onerror = () => resolve([]);
+            });
+        }
+
+        function saveRomToDB(romRecord) {
+            return new Promise((resolve, reject) => {
+                const tx = dbInstance.transaction(STORE_NAME, 'readwrite');
+                const req = tx.objectStore(STORE_NAME).put(romRecord);
+                req.onsuccess = () => resolve();
+                req.onerror = (e) => reject(e.target.error);
+            });
+        }
+
+        function deleteRomFromDB(id) {
+            return new Promise((resolve) => {
+                const tx = dbInstance.transaction(STORE_NAME, 'readwrite');
+                tx.objectStore(STORE_NAME).delete(id);
+                tx.oncomplete = () => resolve();
+            });
+        }
+
+        /* =========================================================================
+           6. AUTOMATIC ORIGINAL GAME BOX ART FETCHER
+           ========================================================================= */
+        const SYSTEM_META = {
+            gba: { label: 'GBA', libretroDir: 'Nintendo_-_Game_Boy_Advance', gradient: 'from-indigo-700 via-purple-600 to-blue-500', icon: '👾' },
+            gbc: { label: 'GB / GBC', libretroDir: 'Nintendo_-_Game_Boy_Color', gradient: 'from-lime-600 via-emerald-600 to-teal-500', icon: '🔋' },
+            nes: { label: 'NES', libretroDir: 'Nintendo_-_Nintendo_Entertainment_System', gradient: 'from-red-700 via-rose-600 to-zinc-700', icon: '🕹️' },
+            snes: { label: 'SNES', libretroDir: 'Nintendo_-_Super_Nintendo_Entertainment_System', gradient: 'from-purple-700 via-indigo-600 to-slate-600', icon: '🎮' },
+            n64: { label: 'N64', libretroDir: 'Nintendo_-_Nintendo_64', gradient: 'from-emerald-700 via-blue-700 to-amber-500', icon: '🧊' },
+            nds: { label: 'NDS', libretroDir: 'Nintendo_-_Nintendo_DS', gradient: 'from-sky-600 via-cyan-600 to-blue-700', icon: '📱' },
+            psx: { label: 'PS1', libretroDir: 'Sony_-_PlayStation', gradient: 'from-slate-800 via-blue-900 to-cyan-700', icon: '💿' },
+            switch: { label: 'SWITCH', libretroDir: 'Nintendo_-_Switch', gradient: 'from-rose-600 via-red-600 to-cyan-500', icon: '🔥' }
+        };
+
+        let fetchedCoverDataUrl = null;
+
+        function cleanGameTitle(rawFilename) {
+            return rawFilename
+                .replace(/\.[^/.]+$/, '')
+                .replace(/\([^)]*\)/g, '')
+                .replace(/\[[^\]]*\]/g, '')
+                .replace(/[_-]+/g, ' ')
+                .replace(/\b(demo|roms?|only|v\d+(\.\d+)*)\b/gi, '')
+                .replace(/\s+/g, ' ')
+                .trim();
+        }
+
+        function setCoverPreviewState(state, imageUrl = null, msg = '') {
+            const imgEl = document.getElementById('coverPreviewImg');
+            const boxEl = document.getElementById('coverPlaceholderBox');
+            const iconEl = document.getElementById('coverStatusIcon');
+            const textEl = document.getElementById('coverStatusText');
+
+            if (state === 'loaded' && imageUrl) {
+                imgEl.src = imageUrl;
+                imgEl.classList.remove('hidden');
+                boxEl.classList.add('hidden');
+                fetchedCoverDataUrl = imageUrl;
+            } else {
+                imgEl.classList.add('hidden');
+                boxEl.classList.remove('hidden');
+                iconEl.textContent = state === 'loading' ? '⏳' : '🎨';
+                textEl.textContent = msg || 'Select a ROM to auto-fetch its original poster';
+                if (state !== 'loading') fetchedCoverDataUrl = null;
+            }
+        }
+
+        function checkImageLoads(url) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                img.onload = () => {
+                    try {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = img.naturalWidth;
+                        canvas.height = img.naturalHeight;
+                        canvas.getContext('2d').drawImage(img, 0, 0);
+                        resolve(canvas.toDataURL('image/jpeg', 0.88));
+                    } catch (e) {
+                        resolve(url);
+                    }
+                };
+                img.onerror = () => resolve(null);
+                img.src = url;
+            });
+        }
+
+        async function fetchOriginalBoxArt(title, systemKey) {
+            if (!title) return;
+            setCoverPreviewState('loading', null, `Searching original poster for "${title}"...`);
+
+            const meta = SYSTEM_META[systemKey] || SYSTEM_META.gba;
+            const encodedTitle = encodeURIComponent(title);
+
+            const regions = ['(USA)', '(World)', '(Europe)', ''];
+            for (const reg of regions) {
+                const candidateName = encodeURIComponent(reg ? `${title} ${reg}` : title);
+                const libretroUrl = `https://thumbnails.libretro.com/${meta.libretroDir}/Named_Boxarts/${candidateName}.png`;
+                const validImg = await checkImageLoads(libretroUrl);
+                if (validImg) {
+                    setCoverPreviewState('loaded', validImg);
+                    return;
+                }
+            }
+
+            try {
+                const wikiSearchUrl = `https://en.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodedTitle}+video+game&gsrlimit=3&prop=pageimages&pithumbsize=500&format=json&origin=*`;
+                const res = await fetch(wikiSearchUrl);
+                const data = await res.json();
+                const pages = data?.query?.pages ? Object.values(data.query.pages) : [];
+                for (const p of pages) {
+                    if (p.thumbnail && p.thumbnail.source) {
+                        const validWikiImg = await checkImageLoads(p.thumbnail.source);
+                        if (validWikiImg) {
+                            setCoverPreviewState('loaded', validWikiImg);
+                            return;
+                        }
+                    }
+                }
+            } catch (e) {}
+
+            setCoverPreviewState('loaded', generateStylizedCoverPoster(title, meta));
+        }
+
+        function generateStylizedCoverPoster(title, meta) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 400;
+            canvas.height = 400;
+            const ctx = canvas.getContext('2d');
+
+            const grad = ctx.createLinearGradient(0, 0, 400, 400);
+            grad.addColorStop(0, '#0f172a');
+            grad.addColorStop(0.5, '#1e3a8a');
+            grad.addColorStop(1, '#0891b2');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, 400, 400);
+
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+            ctx.fillRect(0, 0, 400, 56);
+            ctx.fillStyle = '#38bdf8';
+            ctx.font = '900 22px Inter, sans-serif';
+            ctx.fillText(meta.label + ' OFFICIAL EDITION', 24, 36);
+
+            ctx.font = '84px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(meta.icon, 200, 185);
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '800 30px Inter, sans-serif';
+            const words = title.split(' ');
+            let line = '';
+            let y = 265;
+            for (const w of words) {
+                const test = line + w + ' ';
+                if (ctx.measureText(test).width > 340 && line !== '') {
+                    ctx.fillText(line.trim(), 200, y);
+                    line = w + ' ';
+                    y += 38;
+                } else {
+                    line = test;
+                }
+            }
+            ctx.fillText(line.trim(), 200, y);
+
+            return canvas.toDataURL('image/png');
+        }
+
+        function onRomFileSelected() {
+            const fileInput = document.getElementById('romFileInput');
+            const titleInput = document.getElementById('romTitleInput');
+            const sysSelect = document.getElementById('romSystemSelect');
+            if (!fileInput.files || !fileInput.files[0]) return;
+
+            const fileName = fileInput.files[0].name;
+            const ext = fileName.split('.').pop().toLowerCase();
+            const cleanedTitle = cleanGameTitle(fileName);
+            titleInput.value = cleanedTitle;
+
+            if (ext === 'gba') sysSelect.value = 'gba';
+            else if (ext === 'gb' || ext === 'gbc') sysSelect.value = 'gbc';
+            else if (ext === 'nes') sysSelect.value = 'nes';
+            else if (ext === 'sfc' || ext === 'smc') sysSelect.value = 'snes';
+            else if (ext === 'n64' || ext === 'z64' || ext === 'v64') sysSelect.value = 'n64';
+            else if (ext === 'nds') sysSelect.value = 'nds';
+            else if (ext === 'bin' || ext === 'iso' || ext === 'cue' || ext === 'chd') sysSelect.value = 'psx';
+            else if (ext === 'nsp' || ext === 'xci') sysSelect.value = 'switch';
+
+            fetchOriginalBoxArt(cleanedTitle, sysSelect.value);
+        }
+
+        function retryFetchCoverArt() {
+            const title = document.getElementById('romTitleInput').value.trim();
+            const sys = document.getElementById('romSystemSelect').value;
+            if (title) fetchOriginalBoxArt(title, sys);
+        }
+
+        function handleManualCoverUpload() {
+            const coverInput = document.getElementById('romCoverInput');
+            if (coverInput.files && coverInput.files[0]) {
+                const reader = new FileReader();
+                reader.onload = () => setCoverPreviewState('loaded', reader.result);
+                reader.readAsDataURL(coverInput.files[0]);
+            }
+        }
+
+        async function handleRomUpload(e) {
+            e.preventDefault();
+            const fileInput = document.getElementById('romFileInput');
+            const titleInput = document.getElementById('romTitleInput');
+            const sysSelect = document.getElementById('romSystemSelect');
+            const saveBtn = document.getElementById('saveRomBtn');
+
+            if (!fileInput.files || !fileInput.files[0]) return;
+            const romFile = fileInput.files[0];
+
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Installing...';
+
+            try {
+                const romRecord = {
+                    id: 'rom_' + Date.now(),
+                    title: titleInput.value.trim() || cleanGameTitle(romFile.name),
+                    system: sysSelect.value,
+                    fileName: romFile.name,
+                    fileSize: (romFile.size / (1024 * 1024)).toFixed(2) + ' MB',
+                    romBlob: romFile,
+                    coverUrl: fetchedCoverDataUrl,
+                    addedAt: Date.now()
+                };
+
+                await saveRomToDB(romRecord);
+                await loadAllRomsFromDB();
+
+                playSwitchSound('snap');
+                document.getElementById('addRomForm').reset();
+                setCoverPreviewState('idle');
+                closeAllModals(false);
+
+                focusRow = 'games';
+                activeGameIndex = savedRoms.length - 1;
+                renderCarousel();
+            } catch (err) {
+                console.error('ROM Install failed:', err);
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.textContent = 'Install to Home Screen';
+            }
+        }
+
+        /* =========================================================================
+           7. RENDER HORIZONTAL CAROUSEL & FOCUS NAVIGATION (With Delayed Tooltips)
+           ========================================================================= */
+        let focusRow = 'games'; // 'games' | 'bottom'
+        let activeGameIndex = 0;
+        let activeBottomIndex = 0;
+        let activeModalId = null;
+        let isEmulatorActive = false;
+        let isBridgeActive = false;
+
+        const BOTTOM_LABELS = [
+            'Nintendo eShop / Add ROM',
+            'Free Homebrew Hub & Language Guide',
+            'All Software Library',
+            'Controllers & Grip',
+            'System Settings',
+            'Display & Fullscreen'
+        ];
+
+        function renderCarousel() {
+            const carousel = document.getElementById('gameCarousel');
+            carousel.innerHTML = '';
+
+            document.getElementById('libraryCountBadge').textContent = `${savedRoms.length} ROM${savedRoms.length === 1 ? '' : 's'} Ready`;
+
+            savedRoms.forEach((rom, idx) => {
+                const meta = SYSTEM_META[rom.system] || SYSTEM_META.gba;
+                const isFocused = (focusRow === 'games' && activeGameIndex === idx);
+
+                const tile = document.createElement('div');
+                tile.className = `game-tile relative flex-shrink-0 aspect-square h-[82%] max-h-52 min-h-[128px] rounded-2xl bg-gradient-to-br ${meta.gradient} cursor-pointer overflow-hidden shadow-xl flex flex-col justify-between p-3 border-2 border-white/15 ${isFocused ? 'switch-focused' : ''}`;
+                tile.setAttribute('data-tooltip-title', rom.title);
+                tile.setAttribute('data-tooltip-sub', `${meta.label} • Press A or Tap to Boot`);
+
+                const coverHtml = rom.coverUrl
+                    ? `<img src="${rom.coverUrl}" alt="${rom.title}" class="absolute inset-0 w-full h-full object-cover">`
+                    : '';
+
+                tile.innerHTML = `
+                    ${coverHtml}
+                    <div class="cover-gloss absolute inset-0 pointer-events-none"></div>
+                    <div class="relative z-10 flex items-center justify-between">
+                        <span class="px-2 py-0.5 rounded bg-black/70 backdrop-blur-xs text-[9px] font-extrabold uppercase tracking-wider text-cyan-300 border border-white/15">
+                            ${meta.label}
+                        </span>
+                    </div>
+                    <div class="relative z-10 bg-black/65 backdrop-blur-xs -mx-3 -mb-3 p-2.5 border-t border-white/10">
+                        <div class="text-xs font-extrabold text-white leading-tight truncate">${rom.title}</div>
+                        <div class="text-[9px] text-gray-300 mt-0.5">${rom.fileSize}</div>
+                    </div>
+                `;
+
+                tile.onmouseenter = () => scheduleTooltip(tile, 'above');
+                tile.onmouseleave = () => clearTooltip();
+                tile.onclick = () => {
+                    clearTooltip();
+                    if (focusRow === 'games' && activeGameIndex === idx) {
+                        launchRom(rom);
+                    } else {
+                        focusRow = 'games';
+                        activeGameIndex = idx;
+                        playSwitchSound('tick');
+                        updateFocusUI();
+                    }
+                };
+
+                carousel.appendChild(tile);
+            });
+
+            // "+ Add Your Game ROM" Slot
+            const addIdx = savedRoms.length;
+            const isAddFocused = (focusRow === 'games' && activeGameIndex === addIdx);
+            const addTile = document.createElement('div');
+            addTile.className = `game-tile relative flex-shrink-0 aspect-square h-[82%] max-h-52 min-h-[128px] rounded-2xl bg-[#2D2D2D] hover:bg-[#383838] cursor-pointer flex flex-col items-center justify-center p-3 border-2 border-dashed border-cyan-400/45 text-center ${isAddFocused ? 'switch-focused' : ''}`;
+            addTile.setAttribute('data-tooltip-title', 'Import Game ROM');
+            addTile.setAttribute('data-tooltip-sub', 'Supports .gba, .nes, .sfc, .n64, .nds, .zip');
+            addTile.innerHTML = `
+                <div class="w-11 h-11 rounded-full bg-cyan-500/20 text-cyan-400 flex items-center justify-center text-2xl font-extrabold mb-2">
+                    +
+                </div>
+                <div class="font-extrabold text-xs text-white">Add Game ROM</div>
+                <div class="text-[10px] text-gray-400 mt-0.5">Auto-Fetches Poster</div>
+            `;
+            addTile.onmouseenter = () => scheduleTooltip(addTile, 'above');
+            addTile.onmouseleave = () => clearTooltip();
+            addTile.onclick = () => {
+                clearTooltip();
+                focusRow = 'games';
+                activeGameIndex = addIdx;
+                updateFocusUI(false);
+                openModal('addRomModal');
+            };
+            carousel.appendChild(addTile);
+
+            // "Free Homebrew Store" Quick-Access Tile
+            const storeIdx = savedRoms.length + 1;
+            const isStoreFocused = (focusRow === 'games' && activeGameIndex === storeIdx);
+            const storeTile = document.createElement('div');
+            storeTile.className = `game-tile relative flex-shrink-0 aspect-square h-[82%] max-h-52 min-h-[128px] rounded-2xl bg-gradient-to-br from-[#E60012] via-rose-700 to-amber-600 cursor-pointer flex flex-col justify-between p-3 border-2 border-white/20 shadow-xl ${isStoreFocused ? 'switch-focused' : ''}`;
+            storeTile.setAttribute('data-tooltip-title', 'Get Free Legal ROMs');
+            storeTile.setAttribute('data-tooltip-sub', 'Browse free GBA & NES games on itch.io');
+            storeTile.innerHTML = `
+                <div class="flex items-center justify-between">
+                    <span class="px-2 py-0.5 rounded bg-black/50 text-[9px] font-extrabold uppercase text-amber-300">FREE HUB</span>
+                    <span class="text-xl">🛍️</span>
+                </div>
+                <div class="bg-black/55 -mx-3 -mb-3 p-2.5 border-t border-white/15">
+                    <div class="text-xs font-extrabold text-white leading-tight">Get Free ROMs</div>
+                    <div class="text-[9px] text-amber-200 mt-0.5">itch.io & Homebrew Hub</div>
+                </div>
+            `;
+            storeTile.onmouseenter = () => scheduleTooltip(storeTile, 'above');
+            storeTile.onmouseleave = () => clearTooltip();
+            storeTile.onclick = () => {
+                clearTooltip();
+                focusRow = 'games';
+                activeGameIndex = storeIdx;
+                updateFocusUI(false);
+                openModal('infoModal');
+            };
+            carousel.appendChild(storeTile);
+
+            updateFocusUI(false);
+        }
+
+        function updateFocusUI(scroll = true, triggerDelayedTooltip = false) {
+            const tiles = document.querySelectorAll('#gameCarousel .game-tile');
+            const bottomBtns = document.querySelectorAll('.bottom-nav-btn');
+
+            tiles.forEach((t, i) => t.classList.toggle('switch-focused', focusRow === 'games' && activeGameIndex === i));
+            bottomBtns.forEach((b, i) => b.classList.toggle('bottom-btn-focused', focusRow === 'bottom' && activeBottomIndex === i));
+
+            const badge = document.getElementById('rowBadge');
+            const title = document.getElementById('activeTitleText');
+            const hint = document.getElementById('actionHintLabel');
+
+            clearTooltip();
+
+            if (focusRow === 'games') {
+                badge.textContent = 'Software';
+                if (activeGameIndex < savedRoms.length) {
+                    const rom = savedRoms[activeGameIndex];
+                    title.textContent = rom.title;
+                    hint.textContent = rom.system === 'switch' ? 'Open Bridge' : 'Start Game';
+                } else if (activeGameIndex === savedRoms.length) {
+                    title.textContent = '+ Add Your Game ROM';
+                    hint.textContent = 'Load ROM';
+                } else {
+                    title.textContent = 'Get Free Homebrew ROMs';
+                    hint.textContent = 'Browse';
+                }
+                if (scroll && tiles[activeGameIndex]) {
+                    tiles[activeGameIndex].scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+                }
+                if (triggerDelayedTooltip && tiles[activeGameIndex]) {
+                    scheduleTooltip(tiles[activeGameIndex], 'above');
+                }
+            } else {
+                badge.textContent = 'System';
+                title.textContent = BOTTOM_LABELS[activeBottomIndex];
+                hint.textContent = 'Select';
+                if (triggerDelayedTooltip && bottomBtns[activeBottomIndex]) {
+                    scheduleTooltip(bottomBtns[activeBottomIndex], 'above');
+                }
+            }
+        }
+
+        function activateFocusedItem() {
+            clearTooltip();
+            playSwitchSound('select');
+            if (focusRow === 'games') {
+                if (activeGameIndex < savedRoms.length) launchRom(savedRoms[activeGameIndex]);
+                else if (activeGameIndex === savedRoms.length) openModal('addRomModal');
+                else openModal('infoModal');
+            } else {
+                triggerBottomAction(activeBottomIndex);
+            }
+        }
+
+        function triggerBottomAction(idx) {
+            clearTooltip();
+            focusRow = 'bottom';
+            activeBottomIndex = idx;
+            updateFocusUI(false, false);
+            playSwitchSound('select');
+
+            switch (idx) {
+                case 0: openModal('addRomModal'); break;
+                case 1: openModal('infoModal'); break;
+                case 2: openModal('libraryModal'); break;
+                case 3: openModal('controllerModal'); break;
+                case 4: openModal('settingsModal'); break;
+                case 5: enterFullscreenConsole(); break;
+            }
+        }
+
+        /* =========================================================================
+           8. DIRECT EMULATORJS BOOT ENGINE (ANDROID CHROME FIXED) + 100% AUDIO KILL
+           ========================================================================= */
+        let activeRomObjectUrl = null;
+        let bootWatchdogTimer = null;
+
+        function launchRom(rom) {
+            clearTooltip();
+            playSwitchSound('snap');
+
+            if (rom.system === 'switch') {
+                isBridgeActive = true;
+                document.getElementById('bridgeGameTitle').textContent = rom.title;
+                document.getElementById('bridgeFileName').textContent = rom.fileName;
+                document.getElementById('switchBridgeOverlay').classList.remove('hidden');
+                return;
+            }
+
+            // Suspend UI AudioContext before booting game audio
+            if (audioCtx && audioCtx.state === 'running') {
+                audioCtx.suspend().catch(() => {});
+            }
+
+            // Enter fullscreen landscape if supported
+            if (!document.fullscreenElement) {
+                const docEl = document.documentElement;
+                const req = docEl.requestFullscreen || docEl.webkitRequestFullscreen;
+                if (req) req.call(docEl).catch(() => {});
+            }
+
+            isEmulatorActive = true;
+            document.getElementById('emuRunningTitle').textContent = `${rom.title} (${rom.system.toUpperCase()})`;
+            document.getElementById('emuCoreBadge').textContent = 'BOOTING CORE...';
+            document.getElementById('emulatorOverlay').classList.remove('hidden');
+
+            const bootBanner = document.getElementById('emulatorBootStatus');
+            const bootHeadline = document.getElementById('bootStatusHeadline');
+            const bootSub = document.getElementById('bootStatusSub');
+            bootBanner.classList.remove('hidden');
+            bootHeadline.textContent = `Loading ${rom.title}...`;
+            bootSub.textContent = 'Starting WebAssembly Emulator Core directly in Chrome...';
+
+            // Clean previous ROM URL and stage
+            if (activeRomObjectUrl) URL.revokeObjectURL(activeRomObjectUrl);
+            activeRomObjectUrl = URL.createObjectURL(rom.romBlob);
+
+            const stage = document.getElementById('emulator-stage');
+            stage.innerHTML = `<div id="ejs-game-container" class="w-full h-full"></div>`;
+
+            // Configure EmulatorJS directly on main window (fixes Android Chrome null-origin iframe block)
+            window.EJS_player = '#ejs-game-container';
+            window.EJS_core = rom.system;
+            window.EJS_gameName = rom.title;
+            window.EJS_gameUrl = activeRomObjectUrl;
+            window.EJS_pathtodata = 'https://cdn.emulatorjs.org/stable/data/';
+            window.EJS_language = currentLanguage;
+            window.EJS_startOnLoaded = true;
+            window.EJS_color = '#00C3E3';
+            window.EJS_VirtualGamepadSettings = [
+                { type: 'button', text: 'A', id: 'a', location: 'right', left: 10, bottom: 30, bold: true },
+                { type: 'button', text: 'B', id: 'b', location: 'right', left: 75, bottom: 10, bold: true }
+            ];
+
+            window.EJS_onGameStart = () => {
+                bootBanner.classList.add('hidden');
+                document.getElementById('emuCoreBadge').textContent = 'WASM CORE LIVE';
+                if (bootWatchdogTimer) clearTimeout(bootWatchdogTimer);
+            };
+
+            // Remove old loader script and load fresh with multi-CDN fallback
+            const oldScript = document.getElementById('ejs-main-loader');
+            if (oldScript) oldScript.remove();
+
+            loadEmulatorScript('https://cdn.emulatorjs.org/stable/data/loader.js', () => {
+                // Fallback to jsDelivr mirror if primary CDN is blocked
+                window.EJS_pathtodata = 'https://cdn.jsdelivr.net/gh/EmulatorJS/EmulatorJS@latest/data/';
+                loadEmulatorScript('https://cdn.jsdelivr.net/gh/EmulatorJS/EmulatorJS@latest/data/loader.js', () => {
+                    bootHeadline.textContent = 'Core Download Failed (Check Internet)';
+                    bootSub.textContent = 'EmulatorJS needs an active internet connection on first launch to fetch the WASM core.';
+                });
+            });
+
+            // Auto-hide spinner once canvas appears even if callback is delayed
+            if (bootWatchdogTimer) clearTimeout(bootWatchdogTimer);
+            bootWatchdogTimer = setInterval(() => {
+                const canvas = stage.querySelector('canvas');
+                if (canvas && canvas.width > 0) {
+                    bootBanner.classList.add('hidden');
+                    document.getElementById('emuCoreBadge').textContent = 'WASM CORE LIVE';
+                    clearInterval(bootWatchdogTimer);
+                }
+            }, 500);
+        }
+
+        function loadEmulatorScript(srcUrl, onErrorFallback) {
+            const script = document.createElement('script');
+            script.id = 'ejs-main-loader';
+            script.src = srcUrl;
+            script.onerror = () => {
+                script.remove();
+                if (onErrorFallback) onErrorFallback();
+            };
+            document.body.appendChild(script);
+        }
+
+        function exitEmulator() {
+            isEmulatorActive = false;
+            if (bootWatchdogTimer) clearInterval(bootWatchdogTimer);
+
+            // 1. 100% AUDIO KILL SWITCH: Pause & mute all EmulatorJS audio/video and close its WebAudio contexts
+            try {
+                if (window.EJS_emulator) {
+                    if (typeof window.EJS_emulator.pause === 'function') window.EJS_emulator.pause();
+                    if (window.EJS_emulator.Module && window.EJS_emulator.Module.AL && window.EJS_emulator.Module.AL.contexts) {
+                        Object.values(window.EJS_emulator.Module.AL.contexts).forEach(ctx => {
+                            if (ctx && ctx.audioCtx && typeof ctx.audioCtx.close === 'function') {
+                                ctx.audioCtx.close().catch(() => {});
+                            }
+                        });
+                    }
+                    window.EJS_emulator = null;
+                }
+            } catch (e) {}
+
+            document.querySelectorAll('audio, video').forEach(media => {
+                try {
+                    media.pause();
+                    media.muted = true;
+                    media.src = '';
+                    media.remove();
+                } catch (e) {}
+            });
+
+            // 2. Wipe EmulatorJS DOM & Script
+            const stage = document.getElementById('emulator-stage');
+            stage.innerHTML = '';
+
+            const oldScript = document.getElementById('ejs-main-loader');
+            if (oldScript) oldScript.remove();
+
+            if (activeRomObjectUrl) {
+                URL.revokeObjectURL(activeRomObjectUrl);
+                activeRomObjectUrl = null;
+            }
+
+            document.getElementById('emulatorOverlay').classList.add('hidden');
+            playSwitchSound('back');
+        }
+
+        function closeSwitchBridge() {
+            isBridgeActive = false;
+            playSwitchSound('back');
+            document.getElementById('switchBridgeOverlay').classList.add('hidden');
+        }
+
+        /* =========================================================================
+           9. LIBRARY MANAGER, MODALS & INPUTS
+           ========================================================================= */
+        function renderLibraryList() {
+            const container = document.getElementById('libraryListContainer');
+            container.innerHTML = '';
+
+            if (savedRoms.length === 0) {
+                container.innerHTML = `<div class="text-center py-8 text-xs text-gray-400">No ROMs installed yet. Click "+ Add ROM" to load your first game!</div>`;
+                return;
+            }
+
+            savedRoms.forEach((rom, idx) => {
+                const row = document.createElement('div');
+                row.className = 'flex items-center justify-between p-2.5 rounded-xl bg-[#181818] border border-white/10';
+                row.innerHTML = `
+                    <div class="flex items-center gap-3 min-w-0 pr-2">
+                        <img src="${rom.coverUrl || ''}" class="w-10 h-10 rounded-lg object-cover bg-black/50 shrink-0">
+                        <div class="min-w-0">
+                            <div class="text-xs sm:text-sm font-extrabold text-white truncate">${rom.title}</div>
+                            <div class="text-[10px] text-gray-400">${rom.system.toUpperCase()} • ${rom.fileSize}</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2 shrink-0">
+                        <button onclick="playFromLibrary(${idx})" class="px-3 py-1.5 rounded-lg bg-cyan-500 text-black font-extrabold text-xs">Launch</button>
+                        <button onclick="removeRom('${rom.id}')" class="px-2.5 py-1.5 rounded-lg bg-rose-600/25 text-rose-300 border border-rose-500/40 font-bold text-xs">Delete</button>
+                    </div>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        function playFromLibrary(idx) {
+            closeAllModals(false);
+            focusRow = 'games';
+            activeGameIndex = idx;
+            updateFocusUI();
+            launchRom(savedRoms[idx]);
+        }
+
+        async function removeRom(id) {
+            playSwitchSound('back');
+            await deleteRomFromDB(id);
+            await loadAllRomsFromDB();
+            if (activeGameIndex > savedRoms.length + 1) activeGameIndex = 0;
+            renderLibraryList();
+            renderCarousel();
+        }
+
+        function openModal(id) {
+            clearTooltip();
+            closeAllModals(false);
+            activeModalId = id;
+            const el = document.getElementById(id);
+            if (el) {
+                el.classList.remove('hidden');
+                if (id === 'libraryModal') renderLibraryList();
+                if (id === 'profileModal') initProfileModalUI();
+            }
+        }
+
+        function closeAllModals(playTone = true) {
+            if (activeModalId && playTone) playSwitchSound('back');
+            activeModalId = null;
+            ['profileModal', 'addRomModal', 'libraryModal', 'controllerModal', 'settingsModal', 'infoModal'].forEach(id => {
+                document.getElementById(id).classList.add('hidden');
+            });
+        }
+
+        function toggleTheme() {
+            playSwitchSound('select');
+            const isLight = document.body.classList.toggle('light-theme');
+            document.getElementById('themeBtn').textContent = isLight ? 'Basic White' : 'Basic Black';
+        }
+
+        function updateTelemetry(text) {
+            document.getElementById('inputTelemetry').textContent = text;
+            const readout = document.getElementById('liveInputReadout');
+            if (readout) readout.textContent = text;
+        }
+
+        function moveFocus(dir, step = 1) {
+            if (activeModalId || isEmulatorActive || isBridgeActive) return;
+            const totalTiles = savedRoms.length + 2; // ROMs + Add ROM + Get Free ROMs
+            const totalBottom = 6;
+
+            if (dir === 'DOWN' && focusRow === 'games') {
+                focusRow = 'bottom';
+                playSwitchSound('tick');
+                updateFocusUI(false, true);
+            } else if (dir === 'UP' && focusRow === 'bottom') {
+                focusRow = 'games';
+                playSwitchSound('tick');
+                updateFocusUI(true, true);
+            } else if (dir === 'RIGHT') {
+                if (focusRow === 'games') {
+                    activeGameIndex = (activeGameIndex + step) % totalTiles;
+                    playSwitchSound('tick');
+                    updateFocusUI(true, true);
+                } else {
+                    activeBottomIndex = (activeBottomIndex + 1) % totalBottom;
+                    playSwitchSound('tick');
+                    updateFocusUI(false, true);
+                }
+            } else if (dir === 'LEFT') {
+                if (focusRow === 'games') {
+                    activeGameIndex = (activeGameIndex - step + totalTiles * 10) % totalTiles;
+                    playSwitchSound('tick');
+                    updateFocusUI(true, true);
+                } else {
+                    activeBottomIndex = (activeBottomIndex - 1 + totalBottom) % totalBottom;
+                    playSwitchSound('tick');
+                    updateFocusUI(false, true);
+                }
+            }
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (isEmulatorActive) {
+                if (e.key === 'Escape') exitEmulator();
+                return;
+            }
+            const tag = document.activeElement?.tagName;
+            if (tag === 'INPUT' || tag === 'SELECT') return;
+
+            updateTelemetry(`KB: ${e.key}`);
+            switch (e.key) {
+                case 'ArrowRight': case 'd': case 'D': e.preventDefault(); moveFocus('RIGHT'); break;
+                case 'ArrowLeft': case 'a': case 'A': e.preventDefault(); moveFocus('LEFT'); break;
+                case 'ArrowDown': case 's': case 'S': e.preventDefault(); moveFocus('DOWN'); break;
+                case 'ArrowUp': case 'w': case 'W': e.preventDefault(); moveFocus('UP'); break;
+                case 'Enter': case ' ':
+                    e.preventDefault();
+                    if (isBridgeActive) closeSwitchBridge();
+                    else if (activeModalId === 'infoModal') closeAllModals();
+                    else if (!activeModalId) activateFocusedItem();
+                    break;
+                case 'Escape': case 'Backspace':
+                    if (isBridgeActive) closeSwitchBridge();
+                    else if (activeModalId) closeAllModals();
+                    break;
+                case 'y': case 'Y':
+                    if (!activeModalId && !isBridgeActive) openModal('libraryModal');
+                    break;
+                case 'x': case 'X':
+                    if (!activeModalId && !isBridgeActive) openModal('profileModal');
+                    break;
+            }
+        });
+
+        // Hardware Gamepad API Polling
+        let lastGpNav = 0;
+        let prevGpBtns = {};
+
+        window.addEventListener('gamepadconnected', (e) => {
+            const name = e.gamepad.id.split('(')[0].trim();
+            document.getElementById('gamepadDot').className = 'w-2 h-2 rounded-full bg-emerald-400 animate-ping';
+            document.getElementById('gamepadActiveLabel').classList.remove('hidden');
+            document.getElementById('modalGamepadStatus').textContent = name || 'Gamepad Connected';
+            document.getElementById('modalGamepadStatus').className = 'text-xs sm:text-sm font-extrabold text-emerald-400 mt-0.5';
+            playSwitchSound('snap');
+        });
+
+        function pollGamepads() {
+            const gps = navigator.getGamepads ? navigator.getGamepads() : [];
+            const gp = gps[0];
+            if (gp) {
+                if (isEmulatorActive && gp.buttons[16]?.pressed) {
+                    exitEmulator();
+                } else if (!isEmulatorActive) {
+                    const now = performance.now();
+                    const ax = gp.axes[0] || 0;
+                    const ay = gp.axes[1] || 0;
+                    if (now - lastGpNav > 170) {
+                        if (ax > 0.55 || gp.buttons[15]?.pressed) { moveFocus('RIGHT'); updateTelemetry('Stick: Right'); lastGpNav = now; }
+                        else if (ax < -0.55 || gp.buttons[14]?.pressed) { moveFocus('LEFT'); updateTelemetry('Stick: Left'); lastGpNav = now; }
+                        else if (ay > 0.55 || gp.buttons[13]?.pressed) { moveFocus('DOWN'); updateTelemetry('Stick: Down'); lastGpNav = now; }
+                        else if (ay < -0.55 || gp.buttons[12]?.pressed) { moveFocus('UP'); updateTelemetry('Stick: Up'); lastGpNav = now; }
+                    }
+                    const bA = gp.buttons[0]?.pressed;
+                    const bB = gp.buttons[1]?.pressed;
+                    const bX = gp.buttons[2]?.pressed;
+                    const bY = gp.buttons[3]?.pressed;
+
+                    highlightBtn('btnVis-A', bA);
+                    highlightBtn('btnVis-B', bB);
+                    highlightBtn('btnVis-Y', bY);
+                    highlightBtn('btnVis-X', bX);
+
+                    if (bA && !prevGpBtns[0]) {
+                        updateTelemetry('Gamepad: A');
+                        if (isBridgeActive) closeSwitchBridge();
+                        else if (activeModalId === 'infoModal') closeAllModals();
+                        else if (!activeModalId) activateFocusedItem();
+                    }
+                    if (bB && !prevGpBtns[1]) {
+                        updateTelemetry('Gamepad: B');
+                        if (isBridgeActive) closeSwitchBridge();
+                        else if (activeModalId) closeAllModals();
+                    }
+                    if (bY && !prevGpBtns[3] && !activeModalId) openModal('libraryModal');
+                    if (bX && !prevGpBtns[2] && !activeModalId) openModal('profileModal');
+                    prevGpBtns = { 0: bA, 1: bB, 2: bX, 3: bY };
+                }
+            }
+            requestAnimationFrame(pollGamepads);
+        }
+
+        function highlightBtn(id, active) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.className = active
+                ? 'p-2 rounded-xl bg-cyan-500 text-black font-extrabold border border-cyan-300 scale-105 transition'
+                : 'p-2 rounded-xl bg-[#2E2E2E] border border-white/10 transition';
+        }
+
+        function updateClock() {
+            document.getElementById('clockDisplay').textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+
+        if (navigator.getBattery) {
+            navigator.getBattery().then(bat => {
+                const syncBat = () => {
+                    const pct = Math.round(bat.level * 100);
+                    document.getElementById('batteryText').textContent = `${pct}%`;
+                    document.getElementById('batteryFill').style.width = `${pct}%`;
+                };
+                syncBat();
+                bat.addEventListener('levelchange', syncBat);
+            });
+        }
+
+        window.onload = async () => {
+            loadUserProfile();
+            setConsoleLanguage(currentLanguage);
+            updateClock();
+            setInterval(updateClock, 10000);
+            await openRomDatabase();
+            await loadAllRomsFromDB();
+            renderCarousel();
+            pollGamepads();
+        };
+    </script>
+</body>
+</html>
